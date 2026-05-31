@@ -1,50 +1,19 @@
-const QRCode = require('qrcode');
-const { BlobServiceClient } = require('@azure/storage-blob');
-const connectionString = process.env.STORAGE_CONNECTION_STRING;
+Code Review & Suggested Improvements
+While the code functions as intended, there are three significant areas for improvement regarding safety, efficiency, and correct web behavior.
 
-module.exports = async function (context, req) {
-    context.log('Generating QR code');
+1. Filename / Blob Name Sanitization (Critical)
+Using the input URL as the filename is highly risky. URLs contain characters like slashes (/), question marks (?), and ampersands (&).
 
-    const url = (req.query.url || (req.body && req.body.url));
-    if (!url) {
-        context.res = {
-            status: 400,
-            body: "Please pass a url on the query string or in the request body"
-        };
-        return;
-    }
+A slash (/) in a blob name will create "virtual directories" in Azure Storage. For example, google.com/search?q=test.png will create a folder called google.com and a file named search?q=test.png.
 
-    try {
-        // Generate QR Code
-        const qrCodeData = await QRCode.toDataURL(url);
+Fix: Hash the URL (e.g., using MD5 or SHA-256) or use a UUID for the blob name.
 
-        // Upload to Azure Blob Storage
-        const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
-        const containerName = 'qr-codes';
-        const containerClient = blobServiceClient.getContainerClient(containerName);
-        await containerClient.createIfNotExists({ access: 'blob' });
+2. Unnecessary Base64 Conversion (Efficiency)
+The code generates a Base64 string, runs a RegEx to parse it, and converts it back to a binary Buffer. The qrcode library has a built-in method to output a Buffer directly, skipping all this overhead.
 
-        // Using regex to remove 'https://' from the URL
-        const modifiedUrl = url.replace(/^https?:\/\//, '');
-        const blobName = modifiedUrl + '.png';
-        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+Fix: Replace QRCode.toDataURL() with QRCode.toBuffer().
 
-        const matches = qrCodeData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-        const buffer = Buffer.from(matches[2], 'base64');
+3. Missing Content-Type on Upload (Web Behavior)
+Because the file is uploaded as a raw Buffer without specifying a Content-Type, Azure Storage defaults to application/octet-stream. When users click the resulting URL, their browser will force a file download rather than displaying the image inline.
 
-        await blockBlobClient.upload(buffer, buffer.length);
-
-        context.res = {
-            status: 200,
-            body: { qr_code_url: blockBlobClient.url },
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        };
-    } catch (error) {
-        context.res = {
-            status: 500,
-            body: `Error: ${error.message}`
-        };
-    }
-};
+Fix: Add blobHTTPHeaders to the upload options.
