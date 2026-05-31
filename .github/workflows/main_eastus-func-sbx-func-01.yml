@@ -18,10 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout GitHub Action'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Node ${{ env.NODE_VERSION }} Environment
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v6.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -39,10 +39,8 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           
       - name: 'Run Azure Functions Action'
-        uses: Azure/functions-action@v1
+        uses: Azure/functions-action@v1.5.6
         id: fa
         with:
-          app-name: 'qr-code-generator7'
-          slot-name: 'Production'
-          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_629EA65FEB9C449490D43E2E024484B2 }}
+          app-name: 'eastus-func-sbx-func-01'
+          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }
