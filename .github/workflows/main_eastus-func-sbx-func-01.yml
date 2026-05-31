@@ -33,7 +33,11 @@ jobs:
           npm run build --if-present
           npm run test --if-present
           popd
-
+          
+      - uses: azure/login@v3
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          
       - name: 'Run Azure Functions Action'
         uses: Azure/functions-action@v1
         id: fa
